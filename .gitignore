@@ -1,0 +1,88 @@
+############################
+# .NET / Visual Studio
+############################
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Build results
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+*.exe
+*.dll
+*.pdb
+
+# NuGet
+*.nupkg
+packages/
+
+############################
+# Node / React / React Native
+############################
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Build output
+dist/
+build/
+
+# Expo / React Native
+.expo/
+.expo-shared/
+.expo-dev/
+*.expo
+*.apk
+*.aab
+*.app
+ios/Pods/
+android/.gradle/
+android/app/build/
+ios/build/
+ios/DerivedData/
+
+# Metro bundler cache
+.expo/.cache/
+.expo-cache/
+*.packager
+*.bundle
+*.map
+
+############################
+# Env files
+############################
+.env
+.env.*
+*.local
+
+############################
+# Docker
+############################
+*.pid
+*.seed
+*.pid.lock
+docker-compose.override.yml
+.docker/
+
+############################
+# OS / Editor
+############################
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+*.tmp
+*.bak
+*.orig
