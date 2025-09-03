@@ -13,10 +13,6 @@ public class UserRequest
     public string? Phone { get; set; }
     public string? Address { get; set; }
 
-    // Estado / Rol
-    public bool? Available { get; set; }
-    public UserType? UserType { get; set; }
-
     // Seguridad
     public string? Password { get; set; } // alta / login / cambio de clave
 }

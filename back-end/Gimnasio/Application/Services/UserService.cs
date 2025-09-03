@@ -2,9 +2,7 @@
 using Application.Interfaces;
 using Application.Models.Request;
 using Application.Models.Response;
-using AutoMapper;
 using Domain.Entities;
-using Domain.Entities.Enum;
 using Domain.Interfaces;
 using Microsoft.AspNetCore.Identity;
 
@@ -14,53 +12,64 @@ public class UserService : IUserService
 {
     private readonly IUserRepository _users;
     private readonly IUnitOfWork _uow;
-    private readonly IMapper _mapper;
     private readonly IJwtTokenService _jwt;
     private readonly PasswordHasher<User> _hasher = new();
 
-    public UserService(IUserRepository users, IUnitOfWork uow, IMapper mapper, IJwtTokenService jwt)
+    public UserService(
+        IUserRepository users,
+        IUnitOfWork uow,
+        IJwtTokenService jwt
+
+    )
     {
         _users = users;
         _uow = uow;
-        _mapper = mapper;
         _jwt = jwt;
     }
 
-    // 🔹 Helper: normalizar email en un solo lugar
     private static string NormalizeEmail(string email) => email.Trim().ToLowerInvariant();
+
+    private static UserResponse ToResponse(User e) => new UserResponse
+    {
+        Id = e.Id,
+        NameAccount = e.NameAccount,
+        FirstName = e.FirstName,
+        LastName = e.LastName,
+        Email = e.Email,
+        Phone = e.Phone ?? string.Empty,
+        Address = e.Address ?? string.Empty,
+        Available = e.Available,
+        UserType = e.UserType
+    };
 
     public async Task<UserResponse> CreateAsync(UserRequest req, CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(req.Email)) throw new ArgumentException("Email requerido");
-        if (string.IsNullOrWhiteSpace(req.Password)) throw new ArgumentException("Password requerido");
+        if (string.IsNullOrWhiteSpace(req.Email))
+            throw new ArgumentException("Email requerido");
+        if (string.IsNullOrWhiteSpace(req.Password))
+            throw new ArgumentException("Password requerido");
 
         var normEmail = NormalizeEmail(req.Email);
         if (await _users.EmailExistsAsync(normEmail, null, ct))
             throw new InvalidOperationException("Email ya registrado");
 
-        // ✅ Elegimos subtipo según el enum
-        User entity = (req.UserType ?? UserType.Customer) switch
+        // Siempre Customer y Available = true (defaults en la entidad + ctor de Customer)
+        var entity = new Customer
         {
-            UserType.SuperAdmin => new SuperAdmin(),
-            _ => new Customer()
+            NameAccount = req.NameAccount ?? string.Empty,
+            FirstName = req.FirstName ?? string.Empty,
+            LastName = req.LastName ?? string.Empty,
+            Email = normEmail,
+            Phone = string.IsNullOrWhiteSpace(req.Phone) ? null : req.Phone,
+            Address = string.IsNullOrWhiteSpace(req.Address) ? null : req.Address
         };
-
-        // Seteo explícito
-        entity.NameAccount = req.NameAccount ?? entity.NameAccount;
-        entity.FirstName = req.FirstName ?? entity.FirstName;
-        entity.LastName = req.LastName ?? entity.LastName;
-        entity.Email = normEmail;
-        entity.Phone = req.Phone ?? entity.Phone;
-        entity.Address = req.Address ?? entity.Address;
-        entity.Available = req.Available ?? true;
-        entity.UserType = req.UserType ?? UserType.Customer;
 
         entity.PasswordHash = _hasher.HashPassword(entity, req.Password!);
 
         await _users.AddAsync(entity, ct);
         await _uow.SaveChangesAsync(ct);
 
-        return _mapper.Map<UserResponse>(entity);
+        return ToResponse(entity);
     }
 
     public async Task<UserResponse> UpdateAsync(int id, UserRequest req, CancellationToken ct = default)
@@ -68,7 +77,11 @@ public class UserService : IUserService
         var entity = await _users.GetByIdAsync(id, ct)
                      ?? throw new KeyNotFoundException("Usuario no encontrado");
 
-        // 🔹 Permitir cambiar email si viene y es distinto (normalizado)
+        // Si está deshabilitado, no puede modificarse
+        if (!entity.Available)
+            throw new InvalidOperationException("Usuario deshabilitado");
+
+        // Cambiar email (si viene y no es el mismo)
         if (!string.IsNullOrWhiteSpace(req.Email))
         {
             var newEmail = NormalizeEmail(req.Email);
@@ -80,14 +93,11 @@ public class UserService : IUserService
             }
         }
 
-        if (!string.IsNullOrWhiteSpace(req.FirstName)) entity.FirstName = req.FirstName;
-        if (!string.IsNullOrWhiteSpace(req.LastName)) entity.LastName = req.LastName;
-        if (!string.IsNullOrWhiteSpace(req.Phone)) entity.Phone = req.Phone;
-        if (!string.IsNullOrWhiteSpace(req.Address)) entity.Address = req.Address;
-        if (!string.IsNullOrWhiteSpace(req.NameAccount)) entity.NameAccount = req.NameAccount;
-
-        if (req.Available.HasValue) entity.Available = req.Available.Value;
-        if (req.UserType.HasValue) entity.UserType = req.UserType.Value;
+        if (!string.IsNullOrWhiteSpace(req.NameAccount)) entity.NameAccount = req.NameAccount!;
+        if (!string.IsNullOrWhiteSpace(req.FirstName)) entity.FirstName = req.FirstName!;
+        if (!string.IsNullOrWhiteSpace(req.LastName)) entity.LastName = req.LastName!;
+        if (!string.IsNullOrWhiteSpace(req.Phone)) entity.Phone = req.Phone!;
+        if (!string.IsNullOrWhiteSpace(req.Address)) entity.Address = req.Address!;
 
         if (!string.IsNullOrWhiteSpace(req.Password))
             entity.PasswordHash = _hasher.HashPassword(entity, req.Password);
@@ -95,24 +105,26 @@ public class UserService : IUserService
         _users.Update(entity);
         await _uow.SaveChangesAsync(ct);
 
-        return _mapper.Map<UserResponse>(entity);
+        return ToResponse(entity);
     }
 
     public async Task<UserResponse?> GetByIdAsync(int id, CancellationToken ct = default)
     {
         var entity = await _users.GetByIdAsync(id, ct);
-        return entity is null ? null : _mapper.Map<UserResponse>(entity);
+        return entity is null ? null : ToResponse(entity);
     }
 
     public async Task<IReadOnlyList<UserResponse>> ListAsync(CancellationToken ct = default)
     {
         var list = await _users.ListAsync(ct);
-        return list.Select(_mapper.Map<UserResponse>).ToList();
+        return list.Select(ToResponse).ToList();
     }
 
     public async Task SoftDeleteAsync(int id, CancellationToken ct = default)
     {
-        var entity = await _users.GetByIdAsync(id, ct) ?? throw new KeyNotFoundException("Usuario no encontrado");
+        var entity = await _users.GetByIdAsync(id, ct)
+                     ?? throw new KeyNotFoundException("Usuario no encontrado");
+
         entity.Available = false;
         _users.Update(entity);
         await _uow.SaveChangesAsync(ct);
@@ -120,7 +132,9 @@ public class UserService : IUserService
 
     public async Task HardDeleteAsync(int id, CancellationToken ct = default)
     {
-        var entity = await _users.GetByIdAsync(id, ct) ?? throw new KeyNotFoundException("Usuario no encontrado");
+        var entity = await _users.GetByIdAsync(id, ct)
+                     ?? throw new KeyNotFoundException("Usuario no encontrado");
+
         _users.Remove(entity);
         await _uow.SaveChangesAsync(ct);
     }
@@ -131,13 +145,15 @@ public class UserService : IUserService
         var entity = await _users.GetByEmailAsync(normEmail, ct)
                      ?? throw new UnauthorizedAccessException("Credenciales inválidas");
 
+        if (!entity.Available)
+            throw new UnauthorizedAccessException("Usuario deshabilitado");
+
         var result = _hasher.VerifyHashedPassword(entity, entity.PasswordHash ?? string.Empty, password);
         if (result == PasswordVerificationResult.Failed)
             throw new UnauthorizedAccessException("Credenciales inválidas");
 
         var token = _jwt.GenerateToken(entity);
-        var userDto = _mapper.Map<UserResponse>(entity);
-        return (userDto, token);
+        return (ToResponse(entity), token);
     }
 
     public Task<bool> EmailExistsAsync(string email, int? excludeId = null, CancellationToken ct = default)

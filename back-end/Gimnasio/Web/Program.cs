@@ -1,12 +1,10 @@
 ﻿using Application.Interfaces;
-using Application.Mapping;               // ← para AddAutoMapper(UserProfile)
 using Application.Services;
 using Domain.Interfaces;
 using Infrastructure.Data;
 using Infrastructure.Persistence;
 using Infrastructure.ThirstService;     // ← JwtTokenService
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Web.Extensions;                   // ← AddJwtAuth
 
 
@@ -21,9 +19,6 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("GimnasioDbt")));
 builder.Services.AddScoped<DbContext, AppDbContext>();
-
-// AutoMapper
-builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
 // Auth (JWT + políticas en una sola extensión)
 builder.Services.AddJwtAuth(builder.Configuration);
@@ -56,5 +51,6 @@ app.UseHttpsRedirection();
 app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseAppSwagger();                        // ← muestra Swagger UI
 app.MapControllers();
 app.Run();

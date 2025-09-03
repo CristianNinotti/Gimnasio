@@ -13,7 +13,6 @@ public class UserRequestValidator : AbstractValidator<UserRequest>
             RuleFor(x => x.LastName).NotEmpty();
             RuleFor(x => x.Email).NotEmpty().EmailAddress();
             RuleFor(x => x.Password).NotEmpty().MinimumLength(6);
-            RuleFor(x => x.UserType).NotNull(); // Customer / SuperAdmin
         });
 
         RuleSet("Update", () =>
