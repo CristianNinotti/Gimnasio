@@ -6,17 +6,19 @@ namespace Domain.Entities;
 public abstract class User
 {
     public int Id { get; set; }
-    public string? NameAccount { get; set; }
-    public string? FirstName { get; set; }
-    public string? LastName { get; set; }
+
+    // Recomendado como obligatorios:
+    public string NameAccount { get; set; } = string.Empty;
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+
+    // Opcionales:
     public string? Phone { get; set; }
     public string? Address { get; set; }
-    public string? Email { get; set; }
+
     public bool Available { get; set; } = true;
-
-    // Público: lo podés setear donde quieras
     public UserType UserType { get; set; } = UserType.Customer;
-    public string? PasswordHash { get; set; }
 
-
+    public string PasswordHash { get; set; } = string.Empty; // evito nulls
 }

@@ -1,50 +1,60 @@
-using Application.Interfaces;
-using Application.Models.Helpers;
+﻿using Application.Interfaces;
+using Application.Mapping;               // ← para AddAutoMapper(UserProfile)
+using Application.Services;
+using Domain.Interfaces;
+using Infrastructure.Data;
+using Infrastructure.Persistence;
+using Infrastructure.ThirstService;     // ← JwtTokenService
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Web.Extensions;                   // ← AddJwtAuth
+
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-
+// MVC + Swagger
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.Configure<AuthenticationServiceOptions>(
-    builder.Configuration.GetSection(AuthenticationServiceOptions.AuthenticationService));
+// DbContext
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("GimnasioDbt")));
+builder.Services.AddScoped<DbContext, AppDbContext>();
 
-builder.Services.AddScoped<IPasswordHashingService, PasswordHashingService>();
-builder.Services.AddScoped<IAuthService, AuthenticationService>();
+// AutoMapper
+builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
-//Servicios
-#region
-builder.Services.AddScoped<IPasswordHashingService, PasswordHashingService>();
-builder.Services.AddScoped<IAuthService, AuthService>();
-#endregion
+// Auth (JWT + políticas en una sola extensión)
+builder.Services.AddJwtAuth(builder.Configuration);
 
-//Reposiotrios
-#region
-// builder.Services.AddScoped<IUserRepository, UserRepository>();
-// builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
-#endregion
+// Servicios
+builder.Services.AddScoped<IJwtTokenService, JwtTokenService>(); // servicio de terceros
+builder.Services.AddScoped<IUserService, UserService>();
 
+// Repos + UoW
+builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
+// CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll",
+        p => p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+});
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-
-
 app.UseHttpsRedirection();
-
+app.UseCors("AllowAll");
+app.UseAuthentication();
 app.UseAuthorization();
-
 app.MapControllers();
-
 app.Run();

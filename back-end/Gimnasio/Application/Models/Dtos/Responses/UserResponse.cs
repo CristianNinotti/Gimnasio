@@ -1,4 +1,6 @@
-﻿// Application/DTOs/Response/UserResponse.cs
+﻿// Application/Models/Response/UserResponse.cs
+using Domain.Entities.Enum;
+
 namespace Application.Models.Response;
 
 public class UserResponse
@@ -11,5 +13,5 @@ public class UserResponse
     public string Phone { get; set; } = string.Empty;
     public string Address { get; set; } = string.Empty;
     public bool Available { get; set; }
-    public int UserType { get; set; }   // podés usar int o directamente UserType (enum)
+    public UserType UserType { get; set; }
 }
