@@ -14,6 +14,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddAppSwagger(); // ← 1) agrega Swagger + botón Authorize
 
 // DbContext
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -22,6 +23,8 @@ builder.Services.AddScoped<DbContext, AppDbContext>();
 
 // Auth (JWT + políticas en una sola extensión)
 builder.Services.AddJwtAuth(builder.Configuration);
+
+// Aca
 
 // Servicios
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>(); // servicio de terceros
